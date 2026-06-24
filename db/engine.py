@@ -18,9 +18,15 @@ def _normalize_url(raw: str) -> str:
     return raw
 
 
+def _connect_args(url: str) -> dict:
+    if url.startswith("postgresql+asyncpg://"):
+        return {"ssl": "require"}
+    return {}
+
+
 DATABASE_URL = _normalize_url(os.getenv("DATABASE_URL", "sqlite+aiosqlite:///data/buisui.db"))
 
-engine = create_async_engine(DATABASE_URL)
+engine = create_async_engine(DATABASE_URL, connect_args=_connect_args(DATABASE_URL))
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 
