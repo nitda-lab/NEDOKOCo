@@ -1,5 +1,6 @@
 import asyncio
 import json
+import traceback
 from http.server import BaseHTTPRequestHandler
 
 from api._shared import check_admin, ensure_db, json_response
@@ -28,5 +29,12 @@ class handler(BaseHTTPRequestHandler):
             await ensure_db()
             await verify_email_otp(code)
 
-        asyncio.run(_go())
-        json_response(self, 200, {"status": "ok"})
+        try:
+            asyncio.run(_go())
+            json_response(self, 200, {"status": "ok"})
+        except Exception as e:
+            json_response(self, 500, {
+                "error": type(e).__name__,
+                "message": str(e),
+                "trace": traceback.format_exc()[-1500:],
+            })

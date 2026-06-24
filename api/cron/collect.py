@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from http.server import BaseHTTPRequestHandler
 
 from api._shared import check_admin, check_cron, ensure_db, json_response
@@ -15,8 +16,15 @@ def _run(handler):
         await ensure_db()
         return await run_collection_chunk()
 
-    result = asyncio.run(_go())
-    json_response(handler, 200, result)
+    try:
+        result = asyncio.run(_go())
+        json_response(handler, 200, result)
+    except Exception as e:
+        json_response(handler, 500, {
+            "error": type(e).__name__,
+            "message": str(e),
+            "trace": traceback.format_exc()[-1500:],
+        })
 
 
 class handler(BaseHTTPRequestHandler):
