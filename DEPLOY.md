@@ -9,7 +9,10 @@ Vercel ダッシュボード → Storage → Create Database → Neon。
 `CRON_SECRET` `ADMIN_TOKEN` は十分長いランダム文字列にする。
 
 ## 3. デプロイ
-リポジトリを Vercel に接続。`vercel.json` により Next.js(web/) と Python関数(api/) が同居デプロイされる。
+リポジトリを Vercel に接続。Next.js はリポジトリ直下（`app/` `lib/` `components/` `package.json`）、
+Python関数は `api/` 直下にあり、`vercel.json` で同居デプロイされる。
+Vercel プロジェクトの **Root Directory は リポジトリ直下（`./`）** のままにすること。
+環境変数（`DATABASE_URL` / `POSTGRES_URL` 等）は必ず **Production を含む全環境** に設定する。
 
 ## 4. 初回 VRChat ログイン
 ```bash
