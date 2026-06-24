@@ -1,0 +1,4 @@
+:root { --bg: #0f0c1d; --card: #1a1530; --accent: #7b68ee; --text: #e8e6f0; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; }
+a { color: var(--accent); }

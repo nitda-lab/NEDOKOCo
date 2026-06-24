@@ -10,3 +10,9 @@ venv/
 *.egg-info/
 dist/
 build/
+
+# Next.js / Node
+node_modules/
+web/.next/
+.next/
+*.tsbuildinfo
