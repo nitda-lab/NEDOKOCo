@@ -9,6 +9,7 @@
   ],
   "rewrites": [
     { "source": "/api/admin/vrc-login", "destination": "/api/admin/vrc_login" },
-    { "source": "/api/admin/vrc-otp", "destination": "/api/admin/vrc_otp" }
+    { "source": "/api/admin/vrc-otp", "destination": "/api/admin/vrc_otp" },
+    { "source": "/api/admin/vrc-cookies", "destination": "/api/admin/vrc_cookies" }
   ]
 }

@@ -164,6 +164,21 @@ async def login() -> str:
     return "email_otp"
 
 
+async def set_auth_cookies(auth: str, twofactor: str | None = None) -> bool:
+    """ブラウザ等で取得済みの auth クッキーを検証して保存する。有効なら True。"""
+    auth = (auth or "").strip()
+    if not auth.startswith("authcookie_"):
+        return False
+    if not await asyncio.to_thread(_verify_cookie_sync, auth):
+        return False
+    async with _session() as s:
+        await set_state(s, VRC_AUTH_COOKIE, auth)
+        if twofactor and twofactor.strip():
+            await set_state(s, VRC_TWOFACTOR_COOKIE, twofactor.strip())
+        await delete_state(s, VRC_PENDING_COOKIE)
+    return True
+
+
 async def verify_email_otp(code: str) -> None:
     async with _session() as s:
         pending = await get_state(s, VRC_PENDING_COOKIE)
