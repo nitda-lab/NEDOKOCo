@@ -58,7 +58,7 @@ def score_worlds(worlds: list[dict]) -> list[dict]:
     if not NANOGPT_API_KEY:
         raise RuntimeError("NANOGPT_API_KEY が設定されていません")
 
-    client = OpenAI(api_key=NANOGPT_API_KEY, base_url=NANOGPT_BASE_URL)
+    client = OpenAI(api_key=NANOGPT_API_KEY, base_url=NANOGPT_BASE_URL, timeout=40.0, max_retries=0)
     results: list[dict] = []
 
     for i in range(0, len(worlds), BATCH_SIZE):

@@ -25,14 +25,26 @@ def _score(unscored: list[dict]) -> list[dict]:
 
 
 async def run_collection_chunk() -> dict:
+    """1回の起動で「採点」か「検索」のどちらか片方だけ行う（60秒制限に収めるため）。
+    未採点ワールドがあれば採点を優先し、無ければ次のクエリ束を検索する。"""
     cookie = await get_active_cookie()
     if not cookie:
         async with _session() as s:
             await set_state(s, LAST_STATUS, "auth_required")
-        return {"status": "auth_required", "new": 0, "scored": 0, "cursor": -1}
+        return {"status": "auth_required", "phase": "none", "new": 0, "scored": 0, "cursor": -1}
 
     async with _session() as s:
+        unscored = await get_unscored_worlds(s)
         cursor = int(await get_state(s, COLLECT_CURSOR) or "0")
+    unscored = unscored[:SCORE_PER_RUN]
+
+    if unscored:
+        results = await asyncio.to_thread(_score, unscored)
+        async with _session() as s:
+            scored = await save_ai_scores(s, results)
+            await set_state(s, LAST_COLLECT_AT, datetime.utcnow().isoformat())
+            await set_state(s, LAST_STATUS, f"ok phase=score scored={scored}")
+        return {"status": "ok", "phase": "score", "new": 0, "scored": scored, "cursor": cursor}
 
     total = len(SEARCH_QUERIES)
     queries = SEARCH_QUERIES[cursor: cursor + COLLECT_QUERY_BATCH]
@@ -47,20 +59,11 @@ async def run_collection_chunk() -> dict:
             _, created = await upsert_world(s, data)
             if created:
                 new_count += 1
-        unscored = await get_unscored_worlds(s)
-    unscored = unscored[:SCORE_PER_RUN]  # 60秒の関数制限内に収めるため1回1バッチに制限
-    scored = 0
-    if unscored:
-        results = await asyncio.to_thread(_score, unscored)
-        async with _session() as s:
-            scored = await save_ai_scores(s, results)
-
-    async with _session() as s:
         await set_state(s, COLLECT_CURSOR, str(next_cursor))
         await set_state(s, LAST_COLLECT_AT, datetime.utcnow().isoformat())
-        await set_state(s, LAST_STATUS, f"ok new={new_count} scored={scored}")
+        await set_state(s, LAST_STATUS, f"ok phase=search new={new_count}")
 
-    return {"status": "ok", "new": new_count, "scored": scored, "cursor": next_cursor}
+    return {"status": "ok", "phase": "search", "new": new_count, "scored": 0, "cursor": next_cursor}
 
 
 async def run_collection() -> tuple[int, int]:
