@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 from datetime import datetime
 
 from collector.ai_scorer import score_worlds
@@ -9,7 +10,7 @@ from db.repository import count_qualified, get_unscored_worlds, save_ai_scores, 
 from db.state import COLLECT_CURSOR, LAST_COLLECT_AT, LAST_STATUS, get_state, set_state
 
 COLLECT_QUERY_BATCH = int(os.getenv("COLLECT_QUERY_BATCH", "4"))
-SCORE_PER_RUN = int(os.getenv("COLLECT_SCORE_LIMIT", "20"))
+SCORE_PER_RUN = int(os.getenv("COLLECT_SCORE_LIMIT", "8"))
 
 
 def _session():
@@ -26,25 +27,36 @@ def _score(unscored: list[dict]) -> list[dict]:
 
 async def run_collection_chunk() -> dict:
     """1回の起動で「採点」か「検索」のどちらか片方だけ行う（60秒制限に収めるため）。
-    未採点ワールドがあれば採点を優先し、無ければ次のクエリ束を検索する。"""
-    cookie = await get_active_cookie()
-    if not cookie:
-        async with _session() as s:
-            await set_state(s, LAST_STATUS, "auth_required")
-        return {"status": "auth_required", "phase": "none", "new": 0, "scored": 0, "cursor": -1}
+    採点はVRChat不要なので未採点があれば最優先（cookie検証もしない）。無ければ検索。"""
+    t = {}
+    m0 = time.monotonic()
 
     async with _session() as s:
         unscored = await get_unscored_worlds(s)
         cursor = int(await get_state(s, COLLECT_CURSOR) or "0")
     unscored = unscored[:SCORE_PER_RUN]
+    t["read"] = round(time.monotonic() - m0, 1)
 
     if unscored:
+        m1 = time.monotonic()
         results = await asyncio.to_thread(_score, unscored)
+        t["score_api"] = round(time.monotonic() - m1, 1)
+        m2 = time.monotonic()
         async with _session() as s:
             scored = await save_ai_scores(s, results)
             await set_state(s, LAST_COLLECT_AT, datetime.utcnow().isoformat())
             await set_state(s, LAST_STATUS, f"ok phase=score scored={scored}")
-        return {"status": "ok", "phase": "score", "new": 0, "scored": scored, "cursor": cursor}
+        t["save"] = round(time.monotonic() - m2, 1)
+        return {"status": "ok", "phase": "score", "new": 0, "scored": scored,
+                "got": len(unscored), "cursor": cursor, "t": t}
+
+    m1 = time.monotonic()
+    cookie = await get_active_cookie()
+    t["cookie"] = round(time.monotonic() - m1, 1)
+    if not cookie:
+        async with _session() as s:
+            await set_state(s, LAST_STATUS, "auth_required")
+        return {"status": "auth_required", "phase": "none", "new": 0, "scored": 0, "cursor": -1, "t": t}
 
     total = len(SEARCH_QUERIES)
     queries = SEARCH_QUERIES[cursor: cursor + COLLECT_QUERY_BATCH]
@@ -52,7 +64,10 @@ async def run_collection_chunk() -> dict:
     if next_cursor >= total:
         next_cursor = 0
 
+    m2 = time.monotonic()
     worlds = await asyncio.to_thread(_search, cookie, queries)
+    t["search"] = round(time.monotonic() - m2, 1)
+    m3 = time.monotonic()
     new_count = 0
     async with _session() as s:
         for data in worlds:
@@ -62,8 +77,10 @@ async def run_collection_chunk() -> dict:
         await set_state(s, COLLECT_CURSOR, str(next_cursor))
         await set_state(s, LAST_COLLECT_AT, datetime.utcnow().isoformat())
         await set_state(s, LAST_STATUS, f"ok phase=search new={new_count}")
+    t["upsert"] = round(time.monotonic() - m3, 1)
 
-    return {"status": "ok", "phase": "search", "new": new_count, "scored": 0, "cursor": next_cursor}
+    return {"status": "ok", "phase": "search", "new": new_count, "scored": 0,
+            "found": len(worlds), "cursor": next_cursor, "t": t}
 
 
 async def run_collection() -> tuple[int, int]:
