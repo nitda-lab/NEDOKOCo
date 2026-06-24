@@ -22,6 +22,7 @@ from db.state import (
 VRC_USERNAME = os.getenv("VRC_USERNAME", "")
 VRC_PASSWORD = os.getenv("VRC_PASSWORD", "")
 USER_AGENT = "buisui-bot/1.0 smileglass314@gmail.com"
+REQ_TIMEOUT = 12  # VRChat呼び出しがサーバーレスでハングしないよう全呼び出しに付与
 
 
 def _q(text: str) -> str:
@@ -78,7 +79,7 @@ def _jar_cookie(client: vrchatapi.ApiClient, name: str) -> str | None:
 def _verify_cookie_sync(cookie: str) -> bool:
     client = _make_client(cookie)
     try:
-        AuthenticationApi(client).get_current_user()
+        AuthenticationApi(client).get_current_user(_request_timeout=REQ_TIMEOUT)
         return True
     except Exception:
         return False
@@ -94,7 +95,7 @@ def _password_login_sync(twofactor_cookie: str | None) -> tuple[str, str | None,
     if twofactor_cookie:
         client.set_default_header("Cookie", f"twoFactorAuth={twofactor_cookie}")
     try:
-        AuthenticationApi(client).get_current_user()
+        AuthenticationApi(client).get_current_user(_request_timeout=REQ_TIMEOUT)
         return "ok", _jar_cookie(client, "auth"), _jar_cookie(client, "twoFactorAuth") or twofactor_cookie
     except ApiException as e:
         body = str(getattr(e, "body", "") or "").lower()
@@ -110,7 +111,7 @@ def _verify_otp_sync(pending_cookie: str, code: str) -> str | None:
     api = AuthenticationApi(client)
     api.verify2_fa_email_code(two_factor_email_code=TwoFactorEmailCode(code=code.strip()))
     try:
-        api.get_current_user()
+        api.get_current_user(_request_timeout=REQ_TIMEOUT)
     except Exception:
         pass
     return _jar_cookie(client, "twoFactorAuth")
@@ -208,7 +209,7 @@ def _world_to_dict(world) -> dict:
 def get_world(world_id: str, cookie: str) -> dict | None:
     with _make_client(cookie) as api_client:
         try:
-            return _world_to_dict(WorldsApi(api_client).get_world(world_id))
+            return _world_to_dict(WorldsApi(api_client).get_world(world_id, _request_timeout=REQ_TIMEOUT))
         except ApiException:
             return None
 
@@ -220,7 +221,7 @@ def _search_worlds_with_cookie(cookie: str, queries: list[dict]) -> list[dict]:
         api = WorldsApi(api_client)
         for query in queries:
             try:
-                params = {"n": 50, "sort": "heat", "release_status": "public"}
+                params = {"n": 50, "sort": "heat", "release_status": "public", "_request_timeout": REQ_TIMEOUT}
                 params.update(query)
                 for w in api.search_worlds(**params):
                     if w.id not in seen:

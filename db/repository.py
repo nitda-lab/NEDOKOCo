@@ -48,7 +48,7 @@ async def update_worlds_suggested(session: AsyncSession, world_ids: list[str]) -
     await session.commit()
 
 
-async def upsert_world(session: AsyncSession, data: dict) -> tuple[World, bool]:
+async def upsert_world(session: AsyncSession, data: dict, commit: bool = True) -> tuple[World, bool]:
     result = await session.execute(select(World).where(World.world_id == data["world_id"]))
     world = result.scalar_one_or_none()
 
@@ -64,7 +64,8 @@ async def upsert_world(session: AsyncSession, data: dict) -> tuple[World, bool]:
         world.tags = tags
         world.capacity = data.get("capacity")
         world.fetched_at = datetime.utcnow()
-        await session.commit()
+        if commit:
+            await session.commit()
         return world, False
 
     world = World(
@@ -79,7 +80,8 @@ async def upsert_world(session: AsyncSession, data: dict) -> tuple[World, bool]:
         fetched_at=datetime.utcnow(),
     )
     session.add(world)
-    await session.commit()
+    if commit:
+        await session.commit()
     return world, True
 
 

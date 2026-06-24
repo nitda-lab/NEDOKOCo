@@ -32,13 +32,18 @@ class handler(BaseHTTPRequestHandler):
             async def _dbg():
                 await ensure_db()
                 from db.engine import AsyncSessionLocal
-                from db.state import (VRC_AUTH_COOKIE, VRC_PENDING_COOKIE,
+                from db.repository import count_qualified, count_unscored, count_worlds
+                from db.state import (LAST_STATUS, VRC_AUTH_COOKIE, VRC_PENDING_COOKIE,
                                       VRC_TWOFACTOR_COOKIE, get_state)
                 async with AsyncSessionLocal() as s:
                     return {
                         "pending": _mask(await get_state(s, VRC_PENDING_COOKIE)),
                         "auth": _mask(await get_state(s, VRC_AUTH_COOKIE)),
                         "twofactor": _mask(await get_state(s, VRC_TWOFACTOR_COOKIE)),
+                        "total": await count_worlds(s),
+                        "unscored": await count_unscored(s),
+                        "qualified": await count_qualified(s),
+                        "last_status": await get_state(s, LAST_STATUS),
                     }
             try:
                 json_response(self, 200, asyncio.run(_dbg()))

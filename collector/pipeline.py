@@ -9,8 +9,8 @@ from db.engine import AsyncSessionLocal
 from db.repository import count_qualified, get_unscored_worlds, save_ai_scores, upsert_world
 from db.state import COLLECT_CURSOR, LAST_COLLECT_AT, LAST_STATUS, get_state, set_state
 
-COLLECT_QUERY_BATCH = int(os.getenv("COLLECT_QUERY_BATCH", "4"))
-SCORE_PER_RUN = int(os.getenv("COLLECT_SCORE_LIMIT", "3"))
+COLLECT_QUERY_BATCH = int(os.getenv("COLLECT_QUERY_BATCH", "2"))
+SCORE_PER_RUN = int(os.getenv("COLLECT_SCORE_LIMIT", "10"))
 
 
 def _session():
@@ -71,9 +71,10 @@ async def run_collection_chunk() -> dict:
     new_count = 0
     async with _session() as s:
         for data in worlds:
-            _, created = await upsert_world(s, data)
+            _, created = await upsert_world(s, data, commit=False)
             if created:
                 new_count += 1
+        await s.commit()
         await set_state(s, COLLECT_CURSOR, str(next_cursor))
         await set_state(s, LAST_COLLECT_AT, datetime.utcnow().isoformat())
         await set_state(s, LAST_STATUS, f"ok phase=search new={new_count}")
