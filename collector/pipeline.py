@@ -5,7 +5,7 @@ from datetime import datetime
 from collector.ai_scorer import score_worlds
 from collector.vrc_client import SEARCH_QUERIES, _search_worlds_with_cookie, get_active_cookie
 from db.engine import AsyncSessionLocal
-from db.repository import get_unscored_worlds, save_ai_scores, upsert_world
+from db.repository import count_qualified, get_unscored_worlds, save_ai_scores, upsert_world
 from db.state import COLLECT_CURSOR, LAST_COLLECT_AT, LAST_STATUS, get_state, set_state
 
 COLLECT_QUERY_BATCH = int(os.getenv("COLLECT_QUERY_BATCH", "4"))
@@ -61,3 +61,38 @@ async def run_collection_chunk() -> dict:
         await set_state(s, LAST_STATUS, f"ok new={new_count} scored={scored}")
 
     return {"status": "ok", "new": new_count, "scored": scored, "cursor": next_cursor}
+
+
+async def run_collection() -> tuple[int, int]:
+    """全クエリを一括収集しAI評価まで行う。(新規件数, ぶい睡適合件数) を返す。
+
+    Discord bot の一括収集（初回起動 / `/admin refresh` / `/admin vrc_login`）用。
+    cron は `run_collection_chunk()` でクエリを分割実行する。
+    """
+    cookie = await get_active_cookie()
+    if not cookie:
+        async with _session() as s:
+            await set_state(s, LAST_STATUS, "auth_required")
+        raise RuntimeError("VRChat認証が必要です。/admin vrc_login でOTPを入力してください")
+
+    worlds = await asyncio.to_thread(_search, cookie, SEARCH_QUERIES)
+    new_count = 0
+    for data in worlds:
+        async with _session() as s:
+            _, created = await upsert_world(s, data)
+            if created:
+                new_count += 1
+
+    async with _session() as s:
+        unscored = await get_unscored_worlds(s)
+    if unscored:
+        results = await asyncio.to_thread(_score, unscored)
+        async with _session() as s:
+            await save_ai_scores(s, results)
+
+    async with _session() as s:
+        qualified = await count_qualified(s)
+        await set_state(s, LAST_COLLECT_AT, datetime.utcnow().isoformat())
+        await set_state(s, LAST_STATUS, f"ok new={new_count} qualified={qualified}")
+
+    return new_count, qualified

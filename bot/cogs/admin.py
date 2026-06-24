@@ -7,7 +7,7 @@ from discord.ext import commands
 
 from bot.embeds import build_world_embed
 from collector.pipeline import run_collection
-from collector.vrc_client import get_world, verify_email_otp
+from collector.vrc_client import get_active_cookie, get_world, verify_email_otp
 from db.engine import AsyncSessionLocal
 from db.models import World
 from db.repository import upsert_world
@@ -43,7 +43,7 @@ class AdminCog(commands.Cog):
         code: discord.Option(str, "メールに届いた6桁のOTPコード"),
     ) -> None:
         try:
-            await asyncio.to_thread(verify_email_otp, code)
+            await verify_email_otp(code)
         except Exception as e:
             await ctx.respond(f"❌ OTP検証失敗: {e}", ephemeral=True)
             return
@@ -92,7 +92,14 @@ class AdminCog(commands.Cog):
 
         await ctx.defer(ephemeral=True)
 
-        world_data = await asyncio.to_thread(get_world, wid)
+        cookie = await get_active_cookie()
+        if not cookie:
+            await ctx.followup.send(
+                "VRChat認証が必要です。`/admin vrc_login` でOTPを入力してください", ephemeral=True
+            )
+            return
+
+        world_data = await asyncio.to_thread(get_world, wid, cookie)
         if not world_data:
             await ctx.followup.send(f"ワールド情報を取得できませんでした: `{wid}`", ephemeral=True)
             return

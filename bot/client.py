@@ -18,7 +18,7 @@ async def on_ready() -> None:
 
 async def _initial_collection() -> None:
     try:
-        result = await asyncio.to_thread(login)
+        result = await login()
         if result == "email_otp":
             print("VRChat: メールにOTPが送信されました。Discord の /admin vrc_login <code> で入力してください")
             return
