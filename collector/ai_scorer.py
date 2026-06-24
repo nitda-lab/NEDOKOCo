@@ -3,9 +3,10 @@ import os
 
 from openai import OpenAI
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-MODEL = "google/gemini-2.5-flash"
-BATCH_SIZE = 50
+NANOGPT_API_KEY = os.getenv("NANOGPT_API_KEY", "")
+NANOGPT_BASE_URL = os.getenv("NANOGPT_BASE_URL", "https://nano-gpt.com/api/v1")
+MODEL = os.getenv("SCORING_MODEL", "gemma")
+BATCH_SIZE = int(os.getenv("SCORING_BATCH_SIZE", "20"))
 
 PROMPT_TEMPLATE = """\
 あなたはVRChatのワールドキュレーターです。
@@ -40,35 +41,37 @@ def _build_world_summary(world: dict) -> dict:
     }
 
 
-def score_worlds(worlds: list[dict]) -> list[dict]:
-    """OpenRouter経由でワールドを一括評価。失敗バッチはスキップ。"""
-    if not OPENROUTER_API_KEY:
-        raise RuntimeError("OPENROUTER_API_KEY が設定されていません")
+def _extract_json_array(raw: str) -> list[dict]:
+    start = raw.find("[")
+    end = raw.rfind("]") + 1
+    if start == -1 or end == 0:
+        return []
+    try:
+        parsed = json.loads(raw[start:end])
+        return parsed if isinstance(parsed, list) else []
+    except json.JSONDecodeError:
+        return []
 
-    client = OpenAI(
-        api_key=OPENROUTER_API_KEY,
-        base_url="https://openrouter.ai/api/v1",
-    )
+
+def score_worlds(worlds: list[dict]) -> list[dict]:
+    """nanoGPT経由でワールドを一括評価。失敗バッチはスキップ。"""
+    if not NANOGPT_API_KEY:
+        raise RuntimeError("NANOGPT_API_KEY が設定されていません")
+
+    client = OpenAI(api_key=NANOGPT_API_KEY, base_url=NANOGPT_BASE_URL)
     results: list[dict] = []
 
     for i in range(0, len(worlds), BATCH_SIZE):
         batch = worlds[i: i + BATCH_SIZE]
         summaries = [_build_world_summary(w) for w in batch]
         worlds_json = json.dumps(summaries, ensure_ascii=False, indent=None)
-
         try:
             response = client.chat.completions.create(
                 model=MODEL,
                 max_tokens=4096,
                 messages=[{"role": "user", "content": PROMPT_TEMPLATE.format(worlds_json=worlds_json)}],
             )
-            raw = response.choices[0].message.content.strip()
-            start = raw.find("[")
-            end = raw.rfind("]") + 1
-            if start == -1 or end == 0:
-                continue
-            parsed = json.loads(raw[start:end])
-            results.extend(parsed)
+            results.extend(_extract_json_array(response.choices[0].message.content.strip()))
         except Exception:
             continue
 
