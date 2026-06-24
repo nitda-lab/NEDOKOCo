@@ -19,10 +19,8 @@ PROMPT_TEMPLATE = """\
   高スコア基準: 静か・ambient・chill・ベッドあり・night系・落ち着き・和み・星・月・夜
   低スコア基準: アクション・ゲーム・賑やか・パーティ・戦闘・スポーツ
 
-返答形式（このJSONのみ、余分なテキスト禁止）:
-[{{"world_id":"...","is_japanese":true,"sleep_score":8}}, ...]
-
-重要: 出力はJSON配列のみ。前置き・説明・マークダウンのコードフェンス(```)・入力の再掲は一切禁止。
+返答形式（このJSONオブジェクトのみ、余分なテキスト禁止）:
+{{"results":[{{"world_id":"...","is_japanese":true,"sleep_score":8}}, ...]}}
 
 ワールドリスト:
 {worlds_json}"""
@@ -41,6 +39,21 @@ def _build_world_summary(world: dict) -> dict:
         "author": world.get("author_name", ""),
         "tags": tags[:10],
     }
+
+
+def _parse_scores(raw: str) -> list[dict]:
+    """JSONモードの {"results":[...]} を優先し、配列直返し・饒舌出力にもフォールバックする。"""
+    try:
+        v = json.loads(raw.strip())
+        if isinstance(v, dict):
+            for key in ("results", "worlds", "data", "scores"):
+                if isinstance(v.get(key), list):
+                    return v[key]
+        if isinstance(v, list):
+            return v
+    except json.JSONDecodeError:
+        pass
+    return _extract_json_array(raw)
 
 
 def _extract_json_array(raw: str) -> list[dict]:
@@ -103,9 +116,10 @@ def score_worlds(worlds: list[dict]) -> list[dict]:
                 model=MODEL,
                 max_tokens=4096,
                 temperature=0,
+                response_format={"type": "json_object"},
                 messages=[{"role": "user", "content": PROMPT_TEMPLATE.format(worlds_json=worlds_json)}],
             )
-            results.extend(_extract_json_array(response.choices[0].message.content.strip()))
+            results.extend(_parse_scores(response.choices[0].message.content.strip()))
         except Exception:
             continue
 

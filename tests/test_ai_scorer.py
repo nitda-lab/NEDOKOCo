@@ -1,4 +1,19 @@
-from collector.ai_scorer import _build_world_summary, _extract_json_array
+from collector.ai_scorer import _build_world_summary, _extract_json_array, _parse_scores
+
+
+def test_parse_scores_json_object():
+    raw = '{"results":[{"world_id":"a","is_japanese":true,"sleep_score":8}]}'
+    assert _parse_scores(raw) == [{"world_id": "a", "is_japanese": True, "sleep_score": 8}]
+
+
+def test_parse_scores_plain_array():
+    raw = '[{"world_id":"a","is_japanese":false,"sleep_score":3}]'
+    assert _parse_scores(raw) == [{"world_id": "a", "is_japanese": False, "sleep_score": 3}]
+
+
+def test_parse_scores_fallback_chatty():
+    raw = 'ok: {"results":[{"world_id":"a","is_japanese":true,"sleep_score":5}]} done'
+    assert _parse_scores(raw) == [{"world_id": "a", "is_japanese": True, "sleep_score": 5}]
 
 
 def test_extract_json_array_with_surrounding_text():
