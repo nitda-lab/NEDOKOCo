@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import os
 import re
 from urllib.parse import quote
@@ -68,6 +67,13 @@ def _extract_twofactor_cookie(headers) -> str | None:
     return m.group(1) if m else None
 
 
+def _jar_cookie(client: vrchatapi.ApiClient, name: str) -> str | None:
+    for c in client.rest_client.cookie_jar:
+        if c.name == name:
+            return c.value
+    return None
+
+
 def _verify_cookie_sync(cookie: str) -> bool:
     client = _make_client(cookie)
     try:
@@ -79,26 +85,20 @@ def _verify_cookie_sync(cookie: str) -> bool:
 
 def _password_login_sync(twofactor_cookie: str | None) -> tuple[str, str | None, str | None]:
     """Returns (status, auth_or_pending_cookie, twofactor_cookie). status: "ok" | "email_otp"."""
-    config = vrchatapi.Configuration()
+    config = vrchatapi.Configuration(username=VRC_USERNAME, password=VRC_PASSWORD)
     client = vrchatapi.ApiClient(config)
     client.user_agent = USER_AGENT
-    creds = f"{VRC_USERNAME}:{VRC_PASSWORD}".encode("utf-8")
-    client.set_default_header("Authorization", "Basic " + base64.b64encode(creds).decode("ascii"))
-    cookie_header = ""
     if twofactor_cookie:
-        cookie_header = f"twoFactorAuth={twofactor_cookie}"
-        client.set_default_header("Cookie", cookie_header)
+        client.set_default_header("Cookie", f"twoFactorAuth={twofactor_cookie}")
     try:
-        _, _, headers = AuthenticationApi(client).get_current_user_with_http_info()
-        auth_cookie = _extract_auth_cookie(headers)
-        return "ok", auth_cookie, _extract_twofactor_cookie(headers) or twofactor_cookie
+        AuthenticationApi(client).get_current_user()
+        return "ok", _jar_cookie(client, "auth"), _jar_cookie(client, "twoFactorAuth") or twofactor_cookie
     except ApiException as e:
-        body = str(getattr(e, "body", "") or "")
-        headers = getattr(e, "headers", None)
-        auth_cookie = _extract_auth_cookie(headers)
-        if "emailOtp" in body or "2 Factor" in body or "requiresTwoFactorAuth" in body:
-            return "email_otp", auth_cookie, _extract_twofactor_cookie(headers)
-        raise
+        body = str(getattr(e, "body", "") or "").lower()
+        if "invalid" in body and ("password" in body or "username" in body or "email or" in body):
+            raise
+        auth_cookie = _jar_cookie(client, "auth") or _extract_auth_cookie(getattr(e, "headers", None))
+        return "email_otp", auth_cookie, _jar_cookie(client, "twoFactorAuth")
 
 
 def _verify_otp_sync(pending_cookie: str, code: str) -> str | None:
@@ -107,10 +107,10 @@ def _verify_otp_sync(pending_cookie: str, code: str) -> str | None:
     api = AuthenticationApi(client)
     api.verify2_fa_email_code(two_factor_email_code=TwoFactorEmailCode(code=code.strip()))
     try:
-        _, _, headers = api.get_current_user_with_http_info()
+        api.get_current_user()
     except Exception:
-        headers = None
-    return _extract_twofactor_cookie(headers)
+        pass
+    return _jar_cookie(client, "twoFactorAuth")
 
 
 async def get_active_cookie() -> str | None:
