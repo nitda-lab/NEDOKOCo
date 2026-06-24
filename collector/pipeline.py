@@ -42,13 +42,11 @@ async def run_collection_chunk() -> dict:
 
     worlds = await asyncio.to_thread(_search, cookie, queries)
     new_count = 0
-    for data in worlds:
-        async with _session() as s:
+    async with _session() as s:
+        for data in worlds:
             _, created = await upsert_world(s, data)
             if created:
                 new_count += 1
-
-    async with _session() as s:
         unscored = await get_unscored_worlds(s)
     unscored = unscored[:SCORE_PER_RUN]  # 60秒の関数制限内に収めるため1回1バッチに制限
     scored = 0
