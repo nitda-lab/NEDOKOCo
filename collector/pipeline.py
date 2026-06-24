@@ -9,6 +9,7 @@ from db.repository import count_qualified, get_unscored_worlds, save_ai_scores, 
 from db.state import COLLECT_CURSOR, LAST_COLLECT_AT, LAST_STATUS, get_state, set_state
 
 COLLECT_QUERY_BATCH = int(os.getenv("COLLECT_QUERY_BATCH", "4"))
+SCORE_PER_RUN = int(os.getenv("SCORING_BATCH_SIZE", "20"))
 
 
 def _session():
@@ -49,6 +50,7 @@ async def run_collection_chunk() -> dict:
 
     async with _session() as s:
         unscored = await get_unscored_worlds(s)
+    unscored = unscored[:SCORE_PER_RUN]  # 60秒の関数制限内に収めるため1回1バッチに制限
     scored = 0
     if unscored:
         results = await asyncio.to_thread(_score, unscored)
