@@ -114,3 +114,38 @@ async def save_ai_scores(session: AsyncSession, scores: list[dict]) -> int:
         saved += 1
     await session.commit()
     return saved
+
+
+async def count_worlds(session: AsyncSession) -> int:
+    result = await session.execute(select(func.count()).select_from(World))
+    return int(result.scalar_one())
+
+
+async def count_unscored(session: AsyncSession) -> int:
+    result = await session.execute(
+        select(func.count()).select_from(World).where(World.ai_sleep_score == None)  # noqa: E711
+    )
+    return int(result.scalar_one())
+
+
+async def count_qualified(session: AsyncSession) -> int:
+    result = await session.execute(
+        select(func.count())
+        .select_from(World)
+        .where(World.ai_sleep_score >= _SUGGEST_SCORE_MIN)
+        .where(World.ai_is_japanese == 1)
+    )
+    return int(result.scalar_one())
+
+
+async def list_qualified_worlds(session: AsyncSession, limit: int, offset: int) -> list[World]:
+    stmt = (
+        select(World)
+        .where(World.ai_sleep_score >= _SUGGEST_SCORE_MIN)
+        .where(World.ai_is_japanese == 1)
+        .order_by(World.fetched_at.desc().nullslast())
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
