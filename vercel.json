@@ -7,7 +7,7 @@
     "api/**/*.py": { "runtime": "@vercel/python@4.3.1", "maxDuration": 60 }
   },
   "crons": [
-    { "path": "/api/cron/collect", "schedule": "*/10 * * * *" }
+    { "path": "/api/cron/collect", "schedule": "0 18 * * *" }
   ],
   "rewrites": [
     { "source": "/api/admin/vrc-login", "destination": "/api/admin/vrc_login" },

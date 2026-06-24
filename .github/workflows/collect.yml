@@ -1,0 +1,21 @@
+name: collect-worlds
+
+on:
+  schedule:
+    # GitHub Actions の最小間隔は5分。10分おきに収集エンドポイントを叩く。
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger collection
+        env:
+          COLLECT_URL: ${{ secrets.COLLECT_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -sS -X POST "$COLLECT_URL" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -w $'\nHTTP %{http_code}\n' \
+            --fail-with-body
