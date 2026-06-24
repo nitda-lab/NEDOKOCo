@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import os
 import re
 from urllib.parse import quote
@@ -85,9 +86,11 @@ def _verify_cookie_sync(cookie: str) -> bool:
 
 def _password_login_sync(twofactor_cookie: str | None) -> tuple[str, str | None, str | None]:
     """Returns (status, auth_or_pending_cookie, twofactor_cookie). status: "ok" | "email_otp"."""
-    config = vrchatapi.Configuration(username=VRC_USERNAME, password=VRC_PASSWORD)
+    config = vrchatapi.Configuration()
     client = vrchatapi.ApiClient(config)
     client.user_agent = USER_AGENT
+    creds = f"{VRC_USERNAME}:{VRC_PASSWORD}".encode("utf-8")
+    client.set_default_header("Authorization", "Basic " + base64.b64encode(creds).decode("ascii"))
     if twofactor_cookie:
         client.set_default_header("Cookie", f"twoFactorAuth={twofactor_cookie}")
     try:
