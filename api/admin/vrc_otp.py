@@ -7,6 +7,12 @@ from api._shared import check_admin, ensure_db, json_response
 from collector.vrc_client import verify_email_otp
 
 
+def _mask(v):
+    if not v:
+        return None
+    return f"{v[:14]}...len={len(v)}"
+
+
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         headers = {k.lower(): v for k, v in self.headers.items()}
@@ -21,6 +27,25 @@ class handler(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             json_response(self, 400, {"error": "invalid json"})
             return
+
+        if code == "__status__":
+            async def _dbg():
+                await ensure_db()
+                from db.engine import AsyncSessionLocal
+                from db.state import (VRC_AUTH_COOKIE, VRC_PENDING_COOKIE,
+                                      VRC_TWOFACTOR_COOKIE, get_state)
+                async with AsyncSessionLocal() as s:
+                    return {
+                        "pending": _mask(await get_state(s, VRC_PENDING_COOKIE)),
+                        "auth": _mask(await get_state(s, VRC_AUTH_COOKIE)),
+                        "twofactor": _mask(await get_state(s, VRC_TWOFACTOR_COOKIE)),
+                    }
+            try:
+                json_response(self, 200, asyncio.run(_dbg()))
+            except Exception as e:
+                json_response(self, 500, {"error": type(e).__name__, "message": str(e)})
+            return
+
         if not code:
             json_response(self, 400, {"error": "code required"})
             return
