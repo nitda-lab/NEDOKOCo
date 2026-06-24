@@ -2,6 +2,7 @@ import os
 from urllib.parse import urlsplit, urlunsplit
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from db.models import Base
 
@@ -24,9 +25,18 @@ def _connect_args(url: str) -> dict:
     return {}
 
 
+def _engine_kwargs(url: str) -> dict:
+    kwargs = {"connect_args": _connect_args(url)}
+    if url.startswith("postgresql+asyncpg://"):
+        # サーバーレスは毎リクエスト新しいイベントループ。接続を再利用すると
+        # "Future attached to a different loop" になるため NullPool で都度生成・破棄。
+        kwargs["poolclass"] = NullPool
+    return kwargs
+
+
 DATABASE_URL = _normalize_url(os.getenv("DATABASE_URL", "sqlite+aiosqlite:///data/buisui.db"))
 
-engine = create_async_engine(DATABASE_URL, connect_args=_connect_args(DATABASE_URL))
+engine = create_async_engine(DATABASE_URL, **_engine_kwargs(DATABASE_URL))
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 
