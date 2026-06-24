@@ -5,7 +5,7 @@ from openai import OpenAI
 
 NANOGPT_API_KEY = os.getenv("NANOGPT_API_KEY", "")
 NANOGPT_BASE_URL = os.getenv("NANOGPT_BASE_URL", "https://nano-gpt.com/api/v1")
-MODEL = os.getenv("SCORING_MODEL", "gemma")
+MODEL = os.getenv("SCORING_MODEL", "google/gemma-4-31b-it")
 BATCH_SIZE = int(os.getenv("SCORING_BATCH_SIZE", "20"))
 
 PROMPT_TEMPLATE = """\
@@ -21,6 +21,8 @@ PROMPT_TEMPLATE = """\
 
 返答形式（このJSONのみ、余分なテキスト禁止）:
 [{{"world_id":"...","is_japanese":true,"sleep_score":8}}, ...]
+
+重要: 出力はJSON配列のみ。前置き・説明・マークダウンのコードフェンス(```)・入力の再掲は一切禁止。
 
 ワールドリスト:
 {worlds_json}"""
@@ -42,15 +44,46 @@ def _build_world_summary(world: dict) -> dict:
 
 
 def _extract_json_array(raw: str) -> list[dict]:
-    start = raw.find("[")
-    end = raw.rfind("]") + 1
-    if start == -1 or end == 0:
-        return []
-    try:
-        parsed = json.loads(raw[start:end])
-        return parsed if isinstance(parsed, list) else []
-    except json.JSONDecodeError:
-        return []
+    """饒舌なモデル出力（入力エコー・説明文・```json```）からも採点配列を取り出す。
+    バランスした最上位の [...] を全て拾い、sleep_score を含む配列を優先採用する。"""
+    candidates: list[str] = []
+    depth = 0
+    start = -1
+    in_str = False
+    esc = False
+    for i, ch in enumerate(raw):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "[":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "]" and depth > 0:
+            depth -= 1
+            if depth == 0 and start != -1:
+                candidates.append(raw[start:i + 1])
+
+    parsed_lists: list[list] = []
+    for c in candidates:
+        try:
+            v = json.loads(c)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(v, list):
+            parsed_lists.append(v)
+
+    for v in parsed_lists:
+        if v and isinstance(v[0], dict) and "sleep_score" in v[0]:
+            return v
+    return parsed_lists[-1] if parsed_lists else []
 
 
 def score_worlds(worlds: list[dict]) -> list[dict]:
@@ -69,6 +102,7 @@ def score_worlds(worlds: list[dict]) -> list[dict]:
             response = client.chat.completions.create(
                 model=MODEL,
                 max_tokens=4096,
+                temperature=0,
                 messages=[{"role": "user", "content": PROMPT_TEMPLATE.format(worlds_json=worlds_json)}],
             )
             results.extend(_extract_json_array(response.choices[0].message.content.strip()))
