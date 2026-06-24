@@ -1,10 +1,24 @@
 import os
+from urllib.parse import urlsplit, urlunsplit
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from db.models import Base
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///data/buisui.db")
+
+def _normalize_url(raw: str) -> str:
+    if raw.startswith("postgres://"):
+        raw = "postgresql://" + raw[len("postgres://"):]
+    if raw.startswith("postgresql://"):
+        raw = "postgresql+asyncpg://" + raw[len("postgresql://"):]
+    if raw.startswith("postgresql+asyncpg://"):
+        parts = urlsplit(raw)
+        if parts.query:
+            raw = urlunsplit((parts.scheme, parts.netloc, parts.path, "", parts.fragment))
+    return raw
+
+
+DATABASE_URL = _normalize_url(os.getenv("DATABASE_URL", "sqlite+aiosqlite:///data/buisui.db"))
 
 engine = create_async_engine(DATABASE_URL)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
