@@ -114,12 +114,19 @@ def _verify_otp_sync(pending_cookie: str, code: str) -> str | None:
 
 
 async def get_active_cookie() -> str | None:
+    """cron用。保存済みauthが有効ならそれを使う。失効時はtwoFactorAuthがある場合のみ
+    静かに再ログイン。未ログイン(tfa無し)ならVRChatを叩かず None を返す（OTP乱発・レート制限を避ける）。"""
     async with _session() as s:
         cookie = await get_state(s, VRC_AUTH_COOKIE)
         tfa = await get_state(s, VRC_TWOFACTOR_COOKIE)
     if cookie and await asyncio.to_thread(_verify_cookie_sync, cookie):
         return cookie
-    status, new_cookie, new_tfa = await asyncio.to_thread(_password_login_sync, tfa)
+    if not tfa:
+        return None
+    try:
+        status, new_cookie, new_tfa = await asyncio.to_thread(_password_login_sync, tfa)
+    except ApiException:
+        return None
     if status == "ok" and new_cookie:
         async with _session() as s:
             await set_state(s, VRC_AUTH_COOKIE, new_cookie)
@@ -130,12 +137,18 @@ async def get_active_cookie() -> str | None:
 
 
 async def login() -> str:
+    """管理者用。フルのパスワードログインを行う（メールOTPを誘発しうる）。"""
     async with _session() as s:
         saved = await get_state(s, VRC_AUTH_COOKIE)
         tfa = await get_state(s, VRC_TWOFACTOR_COOKIE)
     if saved and await asyncio.to_thread(_verify_cookie_sync, saved):
         return "ok"
-    status, cookie, new_tfa = await asyncio.to_thread(_password_login_sync, tfa)
+    try:
+        status, cookie, new_tfa = await asyncio.to_thread(_password_login_sync, tfa)
+    except ApiException as e:
+        if getattr(e, "status", None) == 429:
+            return "rate_limited"
+        raise
     if status == "ok" and cookie:
         async with _session() as s:
             await set_state(s, VRC_AUTH_COOKIE, cookie)
