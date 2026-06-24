@@ -10,7 +10,7 @@ from db.repository import count_qualified, get_unscored_worlds, save_ai_scores, 
 from db.state import COLLECT_CURSOR, LAST_COLLECT_AT, LAST_STATUS, get_state, set_state
 
 COLLECT_QUERY_BATCH = int(os.getenv("COLLECT_QUERY_BATCH", "4"))
-SCORE_PER_RUN = int(os.getenv("COLLECT_SCORE_LIMIT", "8"))
+SCORE_PER_RUN = int(os.getenv("COLLECT_SCORE_LIMIT", "3"))
 
 
 def _session():

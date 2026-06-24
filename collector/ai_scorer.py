@@ -104,7 +104,7 @@ def score_worlds(worlds: list[dict]) -> list[dict]:
     if not NANOGPT_API_KEY:
         raise RuntimeError("NANOGPT_API_KEY が設定されていません")
 
-    client = OpenAI(api_key=NANOGPT_API_KEY, base_url=NANOGPT_BASE_URL, timeout=40.0, max_retries=0)
+    client = OpenAI(api_key=NANOGPT_API_KEY, base_url=NANOGPT_BASE_URL, timeout=20.0, max_retries=0)
     results: list[dict] = []
 
     for i in range(0, len(worlds), BATCH_SIZE):
@@ -118,6 +118,7 @@ def score_worlds(worlds: list[dict]) -> list[dict]:
                 temperature=0,
                 response_format={"type": "json_object"},
                 messages=[{"role": "user", "content": PROMPT_TEMPLATE.format(worlds_json=worlds_json)}],
+                timeout=20.0,
             )
             results.extend(_parse_scores(response.choices[0].message.content.strip()))
         except Exception:
