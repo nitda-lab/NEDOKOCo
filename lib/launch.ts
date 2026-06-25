@@ -16,6 +16,12 @@ export function isValidUserId(v: string): boolean {
   return /^usr_[0-9a-f-]{8,}$/i.test(v.trim());
 }
 
+// プロフィールURL（…/user/usr_xxx）でも生のusr_IDでも、含まれる usr_ID を抜き出す
+export function extractUserId(input: string): string | null {
+  const m = input.trim().match(/usr_[0-9a-f-]{8,}/i);
+  return m ? m[0] : null;
+}
+
 export function randomInstanceName(): string {
   return String(Math.floor(Math.random() * 90000) + 10000);
 }

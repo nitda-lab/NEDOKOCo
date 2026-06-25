@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   buildInstanceId,
   buildLaunchUrl,
+  extractUserId,
   INSTANCE_TYPES,
   isValidUserId,
   needsUserId,
@@ -59,12 +60,13 @@ export function LaunchButton({ worldId }: { worldId: string }) {
   }
 
   function saveIdAndLaunch() {
-    if (!isValidUserId(idInput)) {
-      setError("usr_ で始まるIDを入力してください");
+    const extracted = extractUserId(idInput);
+    if (!extracted) {
+      setError("プロフィールURL（…/user/usr_…）か usr_ID を貼り付けてください");
       return;
     }
-    window.localStorage.setItem(STORAGE_KEY, idInput.trim());
-    if (pendingType) launch(pendingType, idInput.trim());
+    window.localStorage.setItem(STORAGE_KEY, extracted);
+    if (pendingType) launch(pendingType, extracted);
   }
 
   return (
@@ -97,14 +99,14 @@ export function LaunchButton({ worldId }: { worldId: string }) {
             </>
           ) : (
             <>
-              <div className="mb-1 text-xs">VRChatユーザーID (usr_…)</div>
+              <div className="mb-1 text-xs">VRChatプロフィールURLを貼り付け</div>
               <div className="mb-2 text-[10px] opacity-60">
-                プロフィールURL …/user/usr_xxxx で確認
+                VRChatにログイン中なら自分のプロフィールを開き、URLをコピーして貼り付け
               </div>
               <input
                 value={idInput}
                 onChange={(e) => setIdInput(e.target.value)}
-                placeholder="usr_xxxxxxxx"
+                placeholder="https://vrchat.com/home/user/usr_..."
                 className="mb-2 w-full rounded bg-bg px-2 py-1 text-sm outline-none"
               />
               {error && <div className="mb-2 text-[10px] text-red-400">{error}</div>}
