@@ -26,6 +26,9 @@ class World(Base):
     suggest_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     ai_sleep_score: Mapped[int | None] = mapped_column(Integer)
     ai_is_japanese: Mapped[int | None] = mapped_column(Integer)  # 1=True / 0=False / NULL=未評価
+    vrc_updated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    favorites: Mapped[int | None] = mapped_column(Integer)
+    popularity: Mapped[int | None] = mapped_column(Integer)
 
 
 class AppState(Base):
