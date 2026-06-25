@@ -30,12 +30,14 @@ export default async function Home({
         {page === 1 && pickup.length > 0 && (
           <section className="mb-8">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-accent">🎲 ランダムピックアップ</h2>
+              <h2 className="text-lg font-bold text-accent">ランダムピックアップ</h2>
               <a href="/" className="text-sm opacity-70 hover:opacity-100">シャッフル ↻</a>
             </div>
-            <div className={grid}>
+            <div className="flex gap-4 overflow-x-auto pb-2">
               {pickup.map((w) => (
-                <WorldCard key={`p-${w.world_id}`} world={w} />
+                <div key={`p-${w.world_id}`} className="w-60 shrink-0">
+                  <WorldCard world={w} />
+                </div>
               ))}
             </div>
           </section>
@@ -56,7 +58,7 @@ export default async function Home({
             </div>
           )}
 
-          <div className="mt-6 flex gap-4">
+          <div className="mt-6 flex justify-end gap-4">
             {page > 1 && (
               <a className="text-accent" href={`/?sort=${sort}&page=${page - 1}`}>← 前へ</a>
             )}
