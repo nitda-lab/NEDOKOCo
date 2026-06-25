@@ -4,7 +4,7 @@ import { formatCount, parseTags, relativeTime, type World } from "@/lib/worlds";
 export function WorldCard({ world }: { world: World }) {
   const tags = parseTags(world.tags);
   return (
-    <div className="overflow-hidden rounded-xl border border-[#2a2350] bg-card text-ink transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/40">
+    <div className="rounded-xl border border-[#2a2350] bg-card text-ink transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/40">
       <a href={world.vrc_url} target="_blank" rel="noreferrer" className="block no-underline text-ink">
         {world.image_url && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -12,7 +12,7 @@ export function WorldCard({ world }: { world: World }) {
             src={world.image_url}
             alt={world.name}
             loading="lazy"
-            className="h-40 w-full object-cover"
+            className="h-40 w-full rounded-t-xl object-cover"
           />
         )}
         <div className="px-3 pt-3">
