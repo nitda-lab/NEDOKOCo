@@ -9,16 +9,19 @@ MODEL = os.getenv("SCORING_MODEL", "google/gemma-4-31b-it")
 BATCH_SIZE = int(os.getenv("SCORING_BATCH_SIZE", "20"))
 
 PROMPT_TEMPLATE = """\
-あなたはVRChatのワールドキュレーターです。
-以下のワールドリストを評価し、必ずJSON配列のみを返してください（説明文不要）。
+あなたはVRChatの「ぶい睡（VR睡眠）」専門キュレーターです。
+ぶい睡とは「そのワールド内で実際に横になって眠ること」を指します。
+以下のワールドを評価し、必ず指定のJSONのみを返してください（説明文不要）。
 
 評価項目:
-- is_japanese: 日本/アジア圏ユーザー向けワールドかどうか（bool）
-  作者名やワールド名に日本語文字があれば true。英語名でも日本語コミュニティ向けなら true。
-- sleep_score: ぶい睡（VRChat内で眠ること）に適した空間かのスコア（整数 1〜10）
-  名前・タグ・説明文(description)から総合判断する。
-  高スコア基準: 静か・ambient・chill・ベッド/寝床あり・寝落ち歓迎・night系・落ち着き・和み・星・月・夜
-  低スコア基準: アクション・ゲーム・賑やか・パーティ・戦闘・スポーツ・ホラー
+- is_japanese: 日本/アジア圏ユーザー向けか（bool）。作者名やワールド名に日本語があれば true。英語名でも日本語コミュニティ向けなら true。
+- sleep_score: その空間で「実際に横になって眠る」のにどれだけ適しているか（整数 1〜10）。名前・タグ・説明文から判断。
+  9-10: 明確に就寝向け。ベッド/布団/寝床がある、暗め/間接照明、静かで落ち着く、安眠/ヒーリング、横になれる夜空・星空
+  6-8: 静かでくつろげる個人宅・和室など、眠るのにも使えそうな落ち着いた空間
+  3-5: 雰囲気はあるが眠る用途ではない
+  1-2: ぶい睡に不向き。次は必ず低評価(1-2)にする:
+       ラウンジ/カフェ/バー/クラブ/イベント会場/ギャラリー/博物館/撮影スポット/ゲーム/アニメ等の作品テーマ/リミナルスペース/にぎやか・社交メインの空間
+  注意: 「chill」「lounge」「cozy」等の語があっても、社交・鑑賞・撮影が主目的なら低評価にする。「眠れるか」だけで判断すること。
 
 返答形式（このJSONオブジェクトのみ、余分なテキスト禁止）:
 {{"results":[{{"world_id":"...","is_japanese":true,"sleep_score":8}}, ...]}}
@@ -26,12 +29,36 @@ PROMPT_TEMPLATE = """\
 ワールドリスト:
 {worlds_json}"""
 
+_ADULT_TAGS = ("content_sex", "content_adult")
+
+
+def _is_adult(tags_raw) -> bool:
+    try:
+        raw = json.loads(tags_raw) if isinstance(tags_raw, str) else (tags_raw or [])
+        return any(isinstance(t, str) and t in _ADULT_TAGS for t in raw)
+    except Exception:
+        return False
+
+
+def _apply_adult_override(results: list[dict], worlds: list[dict]) -> list[dict]:
+    """アダルトタグを持つワールドは sleep_score=0 に固定し、適合から除外する。"""
+    adult_ids = {w["world_id"] for w in worlds if _is_adult(w.get("tags"))}
+    by_id = {r.get("world_id"): r for r in results if isinstance(r, dict)}
+    for wid in adult_ids:
+        if wid in by_id:
+            by_id[wid]["sleep_score"] = 0
+        else:
+            results.append({"world_id": wid, "is_japanese": False, "sleep_score": 0})
+    return results
+
 
 def _build_world_summary(world: dict) -> dict:
     tags_raw = world.get("tags") or "[]"
     try:
-        tags = json.loads(tags_raw) if isinstance(tags_raw, str) else tags_raw
-        tags = [t for t in tags if not t.startswith("system_")]
+        raw = json.loads(tags_raw) if isinstance(tags_raw, str) else tags_raw
+        # 作者が付けた説明的タグ(author_tag_*)だけ残し接頭辞を除去。
+        # system_/admin_/feature_/content_/debug_ 等のノイズタグは捨てる。
+        tags = [t[len("author_tag_"):] for t in raw if isinstance(t, str) and t.startswith("author_tag_")]
     except Exception:
         tags = []
     return {
@@ -126,4 +153,4 @@ def score_worlds(worlds: list[dict]) -> list[dict]:
         except Exception:
             continue
 
-    return results
+    return _apply_adult_override(results, worlds)

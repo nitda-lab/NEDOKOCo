@@ -38,12 +38,40 @@ def test_extract_json_array_prefers_scored_over_echo():
     assert out == [{"world_id": "w1", "is_japanese": True, "sleep_score": 8}]
 
 
-def test_build_world_summary_filters_system_tags():
+def test_build_world_summary_keeps_only_author_tags():
     s = _build_world_summary({
         "world_id": "a", "name": "n", "author_name": "x",
-        "tags": '["system_approved", "chill"]',
+        "tags": '["system_approved", "author_tag_chill", "admin_x", "content_adult"]',
     })
     assert s["tags"] == ["chill"]
+
+
+def test_is_adult():
+    from collector.ai_scorer import _is_adult
+
+    assert _is_adult('["content_adult", "author_tag_chill"]') is True
+    assert _is_adult('["content_sex"]') is True
+    assert _is_adult('["author_tag_sleep"]') is False
+    assert _is_adult(None) is False
+
+
+def test_apply_adult_override():
+    from collector.ai_scorer import _apply_adult_override
+
+    worlds = [
+        {"world_id": "a", "tags": '["content_adult"]'},
+        {"world_id": "b", "tags": '["author_tag_sleep"]'},
+        {"world_id": "c", "tags": '["content_sex"]'},
+    ]
+    results = [
+        {"world_id": "a", "is_japanese": True, "sleep_score": 9},
+        {"world_id": "b", "is_japanese": True, "sleep_score": 8},
+    ]
+    out = _apply_adult_override(results, worlds)
+    by = {r["world_id"]: r for r in out}
+    assert by["a"]["sleep_score"] == 0
+    assert by["b"]["sleep_score"] == 8
+    assert by["c"]["sleep_score"] == 0
 
 
 def test_build_world_summary_includes_description():
