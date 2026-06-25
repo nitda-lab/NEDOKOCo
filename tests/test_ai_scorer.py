@@ -44,3 +44,11 @@ def test_build_world_summary_filters_system_tags():
         "tags": '["system_approved", "chill"]',
     })
     assert s["tags"] == ["chill"]
+
+
+def test_build_world_summary_includes_description():
+    s = _build_world_summary({
+        "world_id": "a", "name": "n", "author_name": "x",
+        "tags": "[]", "description": "ベッドあり 寝落ち歓迎",
+    })
+    assert s["description"] == "ベッドあり 寝落ち歓迎"

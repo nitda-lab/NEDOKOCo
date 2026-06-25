@@ -16,8 +16,9 @@ PROMPT_TEMPLATE = """\
 - is_japanese: 日本/アジア圏ユーザー向けワールドかどうか（bool）
   作者名やワールド名に日本語文字があれば true。英語名でも日本語コミュニティ向けなら true。
 - sleep_score: ぶい睡（VRChat内で眠ること）に適した空間かのスコア（整数 1〜10）
-  高スコア基準: 静か・ambient・chill・ベッドあり・night系・落ち着き・和み・星・月・夜
-  低スコア基準: アクション・ゲーム・賑やか・パーティ・戦闘・スポーツ
+  名前・タグ・説明文(description)から総合判断する。
+  高スコア基準: 静か・ambient・chill・ベッド/寝床あり・寝落ち歓迎・night系・落ち着き・和み・星・月・夜
+  低スコア基準: アクション・ゲーム・賑やか・パーティ・戦闘・スポーツ・ホラー
 
 返答形式（このJSONオブジェクトのみ、余分なテキスト禁止）:
 {{"results":[{{"world_id":"...","is_japanese":true,"sleep_score":8}}, ...]}}
@@ -38,6 +39,7 @@ def _build_world_summary(world: dict) -> dict:
         "name": world["name"],
         "author": world.get("author_name", ""),
         "tags": tags[:10],
+        "description": (world.get("description") or "")[:300],
     }
 
 

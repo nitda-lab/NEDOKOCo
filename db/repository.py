@@ -96,6 +96,7 @@ async def get_unscored_worlds(session: AsyncSession) -> list[dict]:
             "name": w.name,
             "author_name": w.author_name,
             "tags": w.tags,
+            "description": w.description,
         }
         for w in worlds
     ]
