@@ -31,12 +31,18 @@ class handler(BaseHTTPRequestHandler):
         if code == "__status__":
             async def _dbg():
                 await ensure_db()
+                from sqlalchemy import text
                 from db.engine import AsyncSessionLocal
                 from db.repository import count_qualified, count_unscored, count_worlds
                 from db.state import (LAST_STATUS, VRC_AUTH_COOKIE, VRC_PENDING_COOKIE,
                                       VRC_TWOFACTOR_COOKIE, get_state)
                 async with AsyncSessionLocal() as s:
+                    cols = (await s.execute(text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name='worlds' ORDER BY column_name"
+                    ))).scalars().all()
                     return {
+                        "columns": list(cols),
                         "pending": _mask(await get_state(s, VRC_PENDING_COOKIE)),
                         "auth": _mask(await get_state(s, VRC_AUTH_COOKIE)),
                         "twofactor": _mask(await get_state(s, VRC_TWOFACTOR_COOKIE)),
