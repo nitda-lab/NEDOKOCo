@@ -59,7 +59,7 @@ export function LaunchButton({ worldId }: { worldId: string }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="rounded-md bg-accent px-3 py-1 text-xs font-bold text-white"
+        className="shrink-0 whitespace-nowrap rounded-md bg-accent px-3 py-1 text-xs font-bold text-white"
       >
         VRChatで建てる
       </button>

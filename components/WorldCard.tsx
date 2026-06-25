@@ -26,7 +26,7 @@ export function WorldCard({ world }: { world: World }) {
         </div>
       </a>
       <div className="flex items-center justify-between gap-2 px-3 pb-3 pt-2">
-        <div className="flex items-center gap-3 text-xs opacity-70">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs opacity-70">
           <span>❤ {formatCount(world.favorites)}</span>
           {world.capacity && <span>👥 {world.capacity}</span>}
           {world.vrc_updated_at && <span>🕒 {relativeTime(world.vrc_updated_at)}</span>}
