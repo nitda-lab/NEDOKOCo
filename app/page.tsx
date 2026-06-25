@@ -44,7 +44,7 @@ export default async function Home({
         )}
 
         <section>
-          <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-bold">ぶい睡ワールド</h2>
             <SortTabs active={sort} />
           </div>

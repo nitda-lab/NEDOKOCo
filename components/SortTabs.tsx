@@ -16,7 +16,7 @@ export function SortTabs({ active }: { active: SortKey }) {
           key={t.key}
           href={`/?sort=${t.key}`}
           scroll={false}
-          className={`rounded-full px-4 py-1.5 text-sm no-underline transition ${
+          className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm no-underline transition ${
             active === t.key ? "bg-accent text-white" : "bg-card text-ink/80 hover:text-ink"
           }`}
         >
