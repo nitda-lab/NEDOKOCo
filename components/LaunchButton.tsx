@@ -7,7 +7,6 @@ import {
   buildLaunchUrl,
   extractUserId,
   INSTANCE_TYPES,
-  isValidUserId,
   needsUserId,
   randomInstanceName,
   type InstanceType,
@@ -50,11 +49,9 @@ export function LaunchButton({ worldId }: { worldId: string }) {
       launch(type, null);
       return;
     }
-    const saved = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
-    if (saved && isValidUserId(saved)) {
-      launch(type, saved);
-      return;
-    }
+    const saved = (typeof window !== "undefined" && window.localStorage.getItem(STORAGE_KEY)) || "";
+    setIdInput(saved);
+    setError("");
     setPendingType(type);
     setAskId(true);
   }
