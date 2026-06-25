@@ -1,4 +1,4 @@
-import { parseTags, type World } from "@/lib/worlds";
+import { formatCount, parseTags, relativeTime, type World } from "@/lib/worlds";
 
 export function WorldCard({ world }: { world: World }) {
   const tags = parseTags(world.tags);
@@ -7,27 +7,30 @@ export function WorldCard({ world }: { world: World }) {
       href={world.vrc_url}
       target="_blank"
       rel="noreferrer"
-      style={{
-        display: "block", background: "var(--card)", borderRadius: 12,
-        overflow: "hidden", textDecoration: "none", color: "var(--text)",
-        border: "1px solid #2a2350",
-      }}
+      className="group block overflow-hidden rounded-xl border border-[#2a2350] bg-card no-underline text-ink transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/40"
     >
       {world.image_url && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={world.image_url} alt={world.name} style={{ width: "100%", height: 160, objectFit: "cover" }} />
+        <img
+          src={world.image_url}
+          alt={world.name}
+          loading="lazy"
+          className="h-40 w-full object-cover"
+        />
       )}
-      <div style={{ padding: 12 }}>
-        <div style={{ fontWeight: 700, fontSize: 16 }}>{world.name}</div>
-        <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>by {world.author_name}</div>
+      <div className="p-3">
+        <div className="truncate text-base font-bold">{world.name}</div>
+        <div className="mt-0.5 truncate text-xs opacity-70">by {world.author_name}</div>
         {tags.length > 0 && (
-          <div style={{ marginTop: 8, fontSize: 12, color: "var(--accent)" }}>
+          <div className="mt-2 truncate text-xs text-accent">
             {tags.map((t) => `#${t}`).join("　")}
           </div>
         )}
-        {world.capacity && (
-          <div style={{ marginTop: 6, fontSize: 12, opacity: 0.7 }}>👥 最大 {world.capacity} 人</div>
-        )}
+        <div className="mt-2 flex items-center gap-3 text-xs opacity-70">
+          <span>❤ {formatCount(world.favorites)}</span>
+          {world.capacity && <span>👥 {world.capacity}</span>}
+          {world.vrc_updated_at && <span>🕒 {relativeTime(world.vrc_updated_at)}</span>}
+        </div>
       </div>
     </a>
   );
