@@ -105,7 +105,8 @@ export function LaunchButton({ worldId }: { worldId: string }) {
                 <>
                   <div className="mb-1 text-sm font-bold">VRChatプロフィールURLを貼り付け</div>
                   <div className="mb-2 text-[11px] opacity-60">
-                    VRChatにログイン中なら自分のプロフィールを開き、URLをコピーして貼り付け
+                    VRChat Web版（vrchat.com）にブラウザでログイン →
+                    自分のプロフィールページを開き、そのURLをコピーして貼り付け
                   </div>
                   <input
                     value={idInput}
