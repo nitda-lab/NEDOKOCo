@@ -98,13 +98,12 @@ async def run_collection() -> tuple[int, int]:
 
     worlds = await asyncio.to_thread(_search, cookie, SEARCH_QUERIES)
     new_count = 0
-    for data in worlds:
-        async with _session() as s:
-            _, created = await upsert_world(s, data)
+    async with _session() as s:
+        for data in worlds:
+            _, created = await upsert_world(s, data, commit=False)
             if created:
                 new_count += 1
-
-    async with _session() as s:
+        await s.commit()
         unscored = await get_unscored_worlds(s)
     if unscored:
         results = await asyncio.to_thread(_score, unscored)
