@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   buildInstanceId,
@@ -20,6 +20,19 @@ export function LaunchButton({ worldId }: { worldId: string }) {
   const [idInput, setIdInput] = useState("");
   const [pendingType, setPendingType] = useState<InstanceType | null>(null);
   const [error, setError] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setAskId(false);
+      }
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
 
   function launch(type: InstanceType, usrId: string | null) {
     const id = buildInstanceId(type, usrId, randomInstanceName());
@@ -55,13 +68,13 @@ export function LaunchButton({ worldId }: { worldId: string }) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="shrink-0 whitespace-nowrap rounded-md bg-accent px-3 py-1 text-xs font-bold text-white"
       >
-        VRChatで建てる
+        建てる
       </button>
 
       {open && (
