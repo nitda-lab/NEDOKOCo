@@ -2,6 +2,7 @@ import asyncio
 import base64
 import os
 import re
+from datetime import datetime, timezone
 from urllib.parse import quote
 
 import vrchatapi
@@ -193,6 +194,12 @@ async def verify_email_otp(code: str) -> None:
         await delete_state(s, VRC_PENDING_COOKIE)
 
 
+def _naive_utc(dt):
+    if isinstance(dt, datetime) and dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
+
+
 def _world_to_dict(world) -> dict:
     return {
         "world_id": world.id,
@@ -203,7 +210,7 @@ def _world_to_dict(world) -> dict:
         "capacity": getattr(world, "capacity", None),
         "tags": getattr(world, "tags", None),
         "vrc_url": f"https://vrchat.com/home/world/{world.id}",
-        "vrc_updated_at": getattr(world, "updated_at", None),
+        "vrc_updated_at": _naive_utc(getattr(world, "updated_at", None)),
         "favorites": getattr(world, "favorites", None),
         "popularity": getattr(world, "popularity", None),
     }

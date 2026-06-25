@@ -62,3 +62,23 @@ def test_world_to_dict_includes_metrics():
     assert d["favorites"] == 50
     assert d["popularity"] == 7
     assert d["vrc_updated_at"].day == 2
+
+
+def test_world_to_dict_strips_timezone():
+    from datetime import datetime, timezone
+
+    class _W:
+        id = "wrld_tz"
+        name = "n"
+        author_name = "a"
+        description = None
+        image_url = None
+        capacity = None
+        tags = None
+        updated_at = datetime(2026, 6, 2, 12, 0, tzinfo=timezone.utc)
+        favorites = 1
+        popularity = 1
+
+    d = vc._world_to_dict(_W())
+    assert d["vrc_updated_at"].tzinfo is None
+    assert d["vrc_updated_at"].hour == 12
