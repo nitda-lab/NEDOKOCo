@@ -42,3 +42,21 @@ async def test_get_random_worlds_respects_threshold(session):
     await save_ai_scores(session, [{"world_id": "wrld_0", "is_japanese": True, "sleep_score": 8}])
     worlds = await get_random_worlds(session, count=5)
     assert len(worlds) == 1
+
+
+async def test_upsert_world_saves_metrics(session):
+    from datetime import datetime
+
+    from sqlalchemy import select
+
+    from db.models import World
+
+    await upsert_world(session, {
+        "world_id": "wrld_m", "name": "n", "author_name": "a",
+        "vrc_url": "https://vrchat.com/home/world/wrld_m",
+        "vrc_updated_at": datetime(2026, 6, 3), "favorites": 99, "popularity": 12,
+    })
+    row = (await session.execute(select(World).where(World.world_id == "wrld_m"))).scalar_one()
+    assert row.favorites == 99
+    assert row.popularity == 12
+    assert row.vrc_updated_at.day == 3

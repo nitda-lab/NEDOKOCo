@@ -63,6 +63,9 @@ async def upsert_world(session: AsyncSession, data: dict, commit: bool = True) -
         world.image_url = data.get("image_url")
         world.tags = tags
         world.capacity = data.get("capacity")
+        world.vrc_updated_at = data.get("vrc_updated_at")
+        world.favorites = data.get("favorites")
+        world.popularity = data.get("popularity")
         world.fetched_at = datetime.utcnow()
         if commit:
             await session.commit()
@@ -77,6 +80,9 @@ async def upsert_world(session: AsyncSession, data: dict, commit: bool = True) -
         tags=tags,
         capacity=data.get("capacity"),
         vrc_url=data["vrc_url"],
+        vrc_updated_at=data.get("vrc_updated_at"),
+        favorites=data.get("favorites"),
+        popularity=data.get("popularity"),
         fetched_at=datetime.utcnow(),
     )
     session.add(world)

@@ -41,3 +41,24 @@ async def test_login_requires_otp_saves_pending(session, monkeypatch):
 
     assert await vc.login() == "email_otp"
     assert await get_state(session, VRC_PENDING_COOKIE) == "authcookie_pending"
+
+
+def test_world_to_dict_includes_metrics():
+    from datetime import datetime
+
+    class _W:
+        id = "wrld_x"
+        name = "name"
+        author_name = "auth"
+        description = "d"
+        image_url = "http://img"
+        capacity = 16
+        tags = ["sleep"]
+        updated_at = datetime(2026, 6, 2)
+        favorites = 50
+        popularity = 7
+
+    d = vc._world_to_dict(_W())
+    assert d["favorites"] == 50
+    assert d["popularity"] == 7
+    assert d["vrc_updated_at"].day == 2

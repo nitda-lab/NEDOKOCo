@@ -203,6 +203,9 @@ def _world_to_dict(world) -> dict:
         "capacity": getattr(world, "capacity", None),
         "tags": getattr(world, "tags", None),
         "vrc_url": f"https://vrchat.com/home/world/{world.id}",
+        "vrc_updated_at": getattr(world, "updated_at", None),
+        "favorites": getattr(world, "favorites", None),
+        "popularity": getattr(world, "popularity", None),
     }
 
 
