@@ -19,6 +19,16 @@ def test_normalize_passthrough_sqlite():
     assert _normalize_url("sqlite+aiosqlite:///x.db") == "sqlite+aiosqlite:///x.db"
 
 
+async def test_init_db_runs_on_sqlite(monkeypatch, tmp_path):
+    import db.engine as e
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    test_engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path}/t.db")
+    monkeypatch.setattr(e, "engine", test_engine)
+    await e.init_db()
+    await test_engine.dispose()
+
+
 def test_connect_args_asyncpg_requires_ssl():
     assert _connect_args("postgresql+asyncpg://u:p@h/db") == {"ssl": "require"}
 
